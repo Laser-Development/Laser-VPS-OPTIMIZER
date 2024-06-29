@@ -26,8 +26,6 @@ git clone https://github.com/Laser-Development/Laser-VPS-OPTIMIZER
 ```
 bash optimizer.sh
 ```
-# I Hoope You Love This VPS OPTIMIZER
-
 # How to Uninstall
 
 # step 1
