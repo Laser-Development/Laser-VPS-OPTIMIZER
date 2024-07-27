@@ -4,24 +4,22 @@
 apt update -y && apt full-upgrade -y
 
 # Install useful packages
-apt install curl -y
-apt install unzip -y
-apt install zip -y
-apt install nano -y
-apt install htop -y
-apt install screen -y
-apt install git -y
+sudo apt install -y curl unzip zip nano htop screen git ufw
 
 # Optimize SYSCTL
-echo "net.ipv4.tcp_tw_reuse = 1" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_tw_recycle = 1" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_fin_timeout = 15" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_keepalive_time = 30" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_keepalive_probes = 5" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_keepalive_intvl = 15" >> /etc/sysctl.conf
-echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-sysctl -p /etc/sysctl.conf
+cat > /tmp/sysctl_params.txt << EOF
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_tw_recycle = 1
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_keepalive_time = 30
+net.ipv4.tcp_keepalive_probes = 5
+net.ipv4.tcp_keepalive_intvl = 15
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+EOF
+
+sudo mv /tmp/sysctl_params.txt /etc/sysctl.conf
+sudo sysctl -p /etc/sysctl.conf
 
 # Optimize SSH
 echo "ServerAliveInterval 30" >> /etc/ssh/ssh_config
@@ -32,27 +30,36 @@ service ssh restart
 bash <(curl -s https://raw.githubusercontent.com/opiran-club/VPS-Optimizer/main/optimizer.sh --ipv4)
 
 # Swap file + vm.swapiness value
+cat > /tmp/swap_setup.sh << EOF
+#!/bin/bash
 fallocate -l 4G /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
 echo "vm.swappiness = 10" >> /etc/sysctl.conf
 sysctl -p /etc/sysctl.conf
+EOF
+
+sudo bash /tmp/swap_setup.sh
 
 # Badvpn (UDPGW) installation
 wget -N https://raw.githubusercontent.com/opiran-club/VPS-Optimizer/main/Install/udpgw.sh
 bash udpgw.sh
 
 # Install and configure Fail2Ban
+cat > /tmp/fail2ban_setup.sh << EOF
+#!/bin/bash
 apt install fail2ban -y
-echo "[DEFAULT]" >> /etc/fail2ban/jail.conf
-echo "bantime = 3600" >> /etc/fail2ban/jail.conf
-echo "findtime = 600" >> /etc/fail2ban/jail.conf
-echo "maxretry = 3" >> /etc/fail2ban/jail.conf
-service fail2ban restart
+echo "[DEFAULT]" | sudo tee -a /etc/fail2ban/jail.conf
+echo "bantime = 3600" | sudo tee -a /etc/fail2ban/jail.conf
+echo "findtime = 600" | sudo tee -a /etc/fail2ban/jail.conf
+echo "maxretry = 3" | sudo tee -a /etc/fail2ban/jail.conf
+sudo systemctl restart fail2ban
+EOF
+
+sudo bash /tmp/fail2ban_setup.sh
 
 # Install and configure UFW
-apt install ufw -y
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
